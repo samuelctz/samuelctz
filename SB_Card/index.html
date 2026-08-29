@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Card Ledger — Starbucks Collection</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c2a22;--muted:#6d7b72;--faint:#9aa59d;
+  --paper:#eaf0eb;--surface:#fffdf7;--line:#cbd8ce;
+  --green:#00754a;--green-deep:#0b3b2c;--green-tint:#e7f0ea;
+  --gold:#b3893c;--gold-tint:#f4ebd6;
+  --rust:#a13d2b;--rust-tint:#f7e6e0;
+  --blue:#2d5f8a;--blue-tint:#e5eef5;
+  --shadow:0 16px 32px rgba(15,30,22,.08);--shadow-sm:0 3px 10px rgba(15,30,22,.045);
+  --r-lg:10px;--r-md:8px;--r-sm:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:'Inter',system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,.font-display{font-family:'Fraunces',Georgia,serif}
+.font-mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+button,input,select{font:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* ---- top nav ---- */
+.top{position:sticky;top:0;z-index:20;background:#123d2d;backdrop-filter:blur(14px);border-bottom:1px solid #0b3023}
+.nav{max-width:1240px;margin:auto;padding:14px 28px;display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:11px;margin-right:auto}
+.logo{width:38px;height:38px;border-radius:50%;background:#ffd76c;color:#16392c;display:grid;place-items:center;font-size:16px;flex-shrink:0}
+.brand b{font-size:14.5px;letter-spacing:.01em;color:#fffdf7}
+.brand small{display:block;color:#bcd3c3;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:1px}
+.user{display:flex;align-items:center;gap:10px}
+.avatar,.miniavatar{border-radius:50%;background:#ffd76c;color:#16392c;display:grid;place-items:center;font-weight:800}
+.avatar{width:33px;height:33px;font-size:11.5px}
+.username{font-size:12.5px;color:#edf6ef}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:var(--r-sm);padding:10px 15px;font-weight:700;font-size:13px;transition:.15s}
+.btn:hover{border-color:#c9c3b2}
+.btn.primary{background:var(--green-deep);color:#fdf9ef;border-color:var(--green-deep)}
+.btn.primary:hover{background:var(--green)}
+.btn.ghost{background:transparent;border-color:transparent;color:#dbeade}
+.btn.ghost:hover{color:#fffdf7}
+
+/* ---- main / hero ---- */
+main{max-width:1240px;margin:auto;padding:48px 28px 76px}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:34px;padding:34px 36px;border:1px solid #a8cdb1;border-left:9px solid #e8a84c;background:#d6ead9}
+.hero-inner{max-width:640px}
+.eyebrow{text-transform:uppercase;letter-spacing:.18em;font-size:11px;color:var(--gold);font-weight:700}
+.hero h1{font-weight:500;font-size:48px;line-height:1.03;margin:9px 0 11px;color:var(--green-deep)}
+.hero p{color:var(--muted);margin:0;font-size:14.5px;max-width:48ch;line-height:1.65}
+.hero .btn{margin:22px 0 0}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:30px}
+.stat{background:var(--green-tint);border:1px solid #c3dac8;border-left:6px solid var(--accent,var(--gold));border-radius:var(--r-md);padding:18px 20px;box-shadow:none;position:relative}
+.stat:nth-child(2){background:var(--blue-tint);border-color:#bdd3e6}.stat:nth-child(3){background:var(--rust-tint);border-color:#ebc7be}
+.stat::before{display:none}
+.stat b{display:block;font-family:'Fraunces',Georgia,serif;font-size:30px;font-weight:500;color:var(--green-deep);line-height:1}
+.stat span{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+/* ---- filter bar ---- */
+.filterbar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;padding:12px;background:#f7df9c;border:1px solid #e8ca75;border-radius:var(--r-md)}
+.search{flex:1;min-width:200px;position:relative}
+.search input{width:100%;padding:12px 14px 12px 38px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);outline:none}
+.search input:focus{border-color:var(--green)}
+.search::before{content:"⌕";position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:16px;pointer-events:none}
+.select{padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);outline:none;color:var(--ink)}
+.toggle{display:flex;border:1px solid var(--line);border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}
+.toggle button{border:0;background:var(--surface);padding:10px 13px;color:var(--muted)}
+.toggle .active{background:var(--green-tint);color:var(--green-deep)}
+
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:22px;scrollbar-width:thin}
+.chip{flex-shrink:0;display:inline-flex;align-items:center;gap:7px;border:1px solid #bdd3e6;background:#edf5fb;border-radius:100px;padding:7px 14px;font-size:12.5px;font-weight:600;color:#365a75;white-space:nowrap}
+.chip .swatch{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.chip.active{background:var(--green-deep);border-color:var(--green-deep);color:#fdf9ef}
+.chip .n{opacity:.6;margin-left:2px}
+
+/* ---- grid / cards ---- */
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:20px}
+.grid.list{grid-template-columns:1fr}
+.card{background:var(--surface);border:1px solid var(--line);border-top:5px solid #4d8f6b;border-radius:var(--r-md);box-shadow:none;transition:.18s;cursor:pointer;position:relative}
+.card:nth-child(4n+2){border-top-color:#db9b3f}.card:nth-child(4n+3){border-top-color:#5b91bc}.card:nth-child(4n+4){border-top-color:#c96a58}
+.card:hover{transform:translateY(-3px);border-color:#91aa97;box-shadow:var(--shadow-sm)}
+.photo{aspect-ratio:1.3;background:var(--cream,#ece6d4);overflow:hidden;position:relative;border-radius:var(--r-md) var(--r-md) 0 0}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.ph{height:100%;display:grid;place-items:center;font-size:40px;color:#66806e;background:#d5e5d9}
+.catno{position:absolute;left:11px;top:11px;background:#fffefbe6;backdrop-filter:blur(4px);padding:4px 9px;border-radius:6px;font-size:10.5px;font-weight:600;color:var(--green-deep);letter-spacing:.03em}
+.seriesbadge{position:absolute;right:11px;top:11px;padding:5px 10px;border-radius:100px;font-size:10px;font-weight:700;letter-spacing:.02em;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seam{height:1px;margin:0 16px;border-top:1.5px dashed var(--line);position:relative}
+.seam::before,.seam::after{content:"";position:absolute;top:-8px;width:16px;height:16px;background:var(--paper);border-radius:50%;border:1px solid var(--line)}
+.seam::before{left:-24px}
+.seam::after{right:-24px}
+.cardbody{padding:15px 17px 17px}
+.title{font-family:'Fraunces',Georgia,serif;font-size:18.5px;font-weight:500;margin-bottom:4px;color:var(--ink)}
+.meta{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.meta .dot{width:3px;height:3px;border-radius:50%;background:var(--faint)}
+.collector{display:flex;align-items:center;gap:7px;margin-top:13px;padding-top:12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+.miniavatar{width:22px;height:22px;font-size:9px}
+
+.grid.list .card{display:grid;grid-template-columns:180px 1fr}
+.grid.list .photo{height:100%;aspect-ratio:auto;border-radius:var(--r-md) 0 0 var(--r-md)}
+.grid.list .seam{display:none}
+.grid.list .cardbody{padding:18px 20px}
+.grid.list .title{font-size:21px}
+
+.empty{grid-column:1/-1;text-align:center;padding:80px 20px;border:1.5px dashed #d3d0c1;border-radius:var(--r-lg);color:var(--muted);background:var(--surface)}
+.empty strong{display:block;color:var(--green-deep);font-family:'Fraunces',Georgia,serif;font-size:23px;font-weight:500;margin-bottom:6px}
+.empty .btn{margin-top:16px}
+
+/* ---- dialog / modal ---- */
+dialog{width:min(640px,calc(100% - 26px));border:0;border-radius:22px;padding:0;box-shadow:0 30px 90px #0004}
+dialog::backdrop{background:#0f1713b3;backdrop-filter:blur(3px)}
+.modal{padding:26px}
+.modalhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.modal h2{font-size:26px;font-weight:500;margin:0;color:var(--green-deep)}
+.close{border:0;background:var(--paper);border-radius:50%;width:34px;height:34px;color:var(--muted);font-size:16px}
+.photoUpload{display:grid;grid-template-columns:140px 1fr;gap:16px;margin-bottom:8px}
+.preview{height:140px;border-radius:14px;background:#d5e5d9;overflow:hidden;display:grid;place-items:center;color:#66806e;font-size:36px}
+.preview img{width:100%;height:100%;object-fit:cover}
+.uploadcopy{align-self:center}
+.uploadcopy b{display:block;margin-bottom:4px;font-size:13.5px}
+.uploadcopy span{display:block;color:var(--muted);font-size:12px;margin-bottom:10px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.field{margin:13px 0}
+.field label{display:block;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);outline:none}
+.field input:focus,.field select:focus{border-color:var(--green)}
+.field .hint{font-size:11px;color:var(--faint);margin-top:5px}
+.field .hint.warn{color:#a1652b}
+.field input:invalid:not(:placeholder-shown){border-color:var(--rust)}
+.modalactions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+
+.dupes{display:none;margin:14px 0;background:var(--gold-tint);border:1px solid #e5d3a3;border-radius:12px;padding:12px 14px}
+.dupes.show{display:block}
+.dupes .dh{font-size:11.5px;font-weight:800;color:#8a6a26;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px;display:flex;align-items:center;gap:6px}
+.dupehit{display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;border-radius:8px}
+.dupehit:hover{background:#f0e2bc80}
+.dupethumb{width:38px;height:38px;border-radius:8px;background:#e4dfcf;overflow:hidden;flex-shrink:0;display:grid;place-items:center;font-size:16px;color:#a3aa9d}
+.dupethumb img{width:100%;height:100%;object-fit:cover}
+.dupeinfo b{display:block;font-size:13px}
+.dupeinfo span{font-size:11px;color:var(--muted)}
+
+/* ---- login ---- */
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:#cde4d4}
+.loginbox{width:min(410px,100%);background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:36px;box-shadow:var(--shadow)}
+.loginbox .logo{margin:0 auto 16px}
+.loginbox h1{text-align:center;font-size:27px;font-weight:500;color:var(--green-deep);margin:0 0 6px}
+.loginbox p{text-align:center;color:var(--muted);font-size:13px;margin:0 0 18px}
+.loginbox input{width:100%;padding:12px 13px;margin:6px 0;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.loginbox button{width:100%;margin-top:10px}
+.guest-access{margin:0 0 18px;padding:15px;border:1px solid #c8d9ce;border-radius:var(--r-sm);background:var(--green-tint);text-align:left}
+.guest-access b{display:block;color:var(--green-deep);font-size:13px;margin-bottom:4px}
+.guest-access span{display:block;color:#456253;font-size:12px;line-height:1.45}
+.guest-access .btn{margin-top:12px;background:var(--green-deep);border-color:var(--green-deep);color:#fdf9ef}
+.login-divider{display:flex;align-items:center;gap:10px;color:var(--faint);font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;margin:2px 0 8px}
+.login-divider::before,.login-divider::after{content:"";height:1px;background:var(--line);flex:1}
+
+@media(max-width:900px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){
+  .nav{padding:12px 16px}.brand small{display:none}
+  main{padding:30px 16px 50px}
+  .hero{display:block}.hero h1{font-size:34px}.hero .btn{margin:16px 0 0}
+  .stats{gap:8px}.stat{padding:13px}.stat b{font-size:22px}
+  .filterbar{flex-wrap:wrap}.search{flex-basis:100%}.select{flex:1}
+  .grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .cardbody{padding:12px}.title{font-size:15.5px}
+  .grid.list{grid-template-columns:1fr}.grid.list .card{grid-template-columns:120px 1fr}
+  .photoUpload{grid-template-columns:1fr}.preview{height:190px}
+  .row2{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body><div id="app"></div>
+<dialog id="cardDialog"><form class="modal" id="cardForm">
+  <div class="modalhead">
+    <div><div class="eyebrow">Collection entry</div><h2 id="dialogTitle">Add a card</h2></div>
+    <button type="button" class="close" onclick="cardDialog.close()">×</button>
+  </div>
+  <div class="photoUpload">
+    <div class="preview" id="preview">☕</div>
+    <div class="uploadcopy"><b>Front of card</b><span>A clear, front-facing photo. This is the image used throughout your catalogue.</span><input id="photo" type="file" accept="image/*"></div>
+  </div>
+  <input id="editId" type="hidden">
+  <div class="field"><label>Card name / design *</label><input id="name" required placeholder="e.g. Sakura Bloom 2026" autocomplete="off"></div>
+
+  <div id="dupes" class="dupes">
+    <div class="dh">✻ Possibly already in your collection</div>
+    <div id="dupeList"></div>
+  </div>
+
+  <div class="row2">
+    <div class="field"><label>Series *</label>
+      <select id="series" required>
+        <option value="">Choose a series</option>
+        <option>City Collection</option>
+        <option>Anniversary</option>
+        <option>Holiday &amp; Seasonal</option>
+        <option>Starbucks Reserve</option>
+        <option value="Other">Other…</option>
+      </select>
+    </div>
+    <div class="field"><label>Year</label><input id="year" type="number" min="1994" max="2100" placeholder="e.g. 2026"></div>
+  </div>
+  <div class="field" id="seriesOtherWrap" style="display:none"><label>Series name</label><input id="seriesOther" placeholder="Name this series"></div>
+
+  <div class="row2">
+    <div class="field">
+      <label>Country *</label>
+      <input id="country" required placeholder="e.g. Singapore" autocomplete="off" list="countryOptions">
+      <datalist id="countryOptions"></datalist>
+      <div class="hint" id="countryHint"></div>
+    </div>
+    <div class="field">
+      <label>City / location</label>
+      <input id="city" placeholder="Enter a valid country first" autocomplete="off" list="cityOptions" disabled>
+      <datalist id="cityOptions"></datalist>
+      <div class="hint" id="cityHint"></div>
+    </div>
+  </div>
+  <div class="field"><label>Added by</label><input id="addedBy" placeholder="Your name"></div>
+  <div class="modalactions"><button type="button" class="btn" onclick="cardDialog.close()">Cancel</button><button class="btn primary">Save card</button></div>
+</form></dialog>
+<script>
+const CONFIG={url:"https://opxpawdxngyuehtwxirc.supabase.co",key:"sb_publishable_ssNr1do940aOESKsIE_1ww_YUI36Eoe"};
+const sb=supabase.createClient(CONFIG.url,CONFIG.key);
+let cards=[],photoData="",view="grid",currentUser=null,catalogNo={},activeSeries="",sortMode="new";
+let guestMode=sessionStorage.getItem("card-ledger-guest")==="true";
+let cityCache={},currentCityList=[],cityLookupAvailable=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const initials=s=>String(s||"?").split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
+const padNo=n=>"No. "+String(n).padStart(3,"0");
+
+/* ---- legitimate country list (ISO country names, static so it always works) ---- */
+const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hong Kong","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Macau","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Puerto Rico","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
+
+function populateCountrySelect(){
+  $("countryOptions").innerHTML=COUNTRIES.map(c=>`<option value="${esc(c)}">`).join("");
+}
+function normalizedCountry(value){
+  let entered=value.trim().toLowerCase();
+  return COUNTRIES.find(country=>country.toLowerCase()===entered)||"";
+}
+
+/* City list per country — fetched from a public places dataset so only real cities can be entered.
+   Falls back to free text (flagged as unverified) if the lookup fails, so the form never gets stuck. */
+async function loadCitiesFor(country){
+  let cityInput=$("city"),hint=$("cityHint"),countryHint=$("countryHint");
+  currentCityList=[];cityLookupAvailable=false;
+  let validCountry=normalizedCountry(country);
+  if(!country){cityInput.disabled=true;cityInput.value="";cityInput.placeholder="Enter a valid country first";hint.textContent="";countryHint.textContent="";return}
+  if(!validCountry){cityInput.disabled=true;cityInput.value="";cityInput.placeholder="Enter a valid country first";hint.textContent="";countryHint.textContent="Use a real country from the suggestions.";countryHint.className="hint warn";return}
+  country=validCountry;countryHint.textContent="Country verified.";countryHint.className="hint";
+  cityInput.disabled=false;cityInput.placeholder="Start typing a city…";hint.textContent="Loading cities…";hint.className="hint";
+  if(cityCache[country]){currentCityList=cityCache[country];cityLookupAvailable=true;fillCityList();return}
+  try{
+    let res=await fetch("https://countriesnow.space/api/v0.1/countries/cities",{
+      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({country})
+    });
+    let json=await res.json();
+    if(json.error||!Array.isArray(json.data))throw new Error("no data");
+    cityCache[country]=json.data;
+    currentCityList=json.data;
+    cityLookupAvailable=true;
+    fillCityList();
+  }catch(err){
+    currentCityList=[];
+    cityLookupAvailable=false;
+    hint.textContent="Couldn't verify a city list for this country — you can still type one in.";
+    hint.className="hint warn";
+    hint.textContent="Couldn't verify cities for this country. Please try again before saving.";
+  }
+}
+function fillCityList(){
+  let dl=$("cityOptions"),hint=$("cityHint");
+  dl.innerHTML=currentCityList.slice(0,4000).map(c=>`<option value="${esc(c)}">`).join("");
+  hint.textContent=currentCityList.length?`${currentCityList.length.toLocaleString()} known cities — pick one from the list.`:"No city list available for this country — free text allowed.";
+  hint.className="hint";
+  hint.textContent=currentCityList.length?`${currentCityList.length.toLocaleString()} known cities. Type one, or select a suggestion.`:"No verified cities found for this country.";
+}
+function validateCity(){
+  let v=$("city").value.trim();
+  if(!v)return true;
+  if(!cityLookupAvailable)return false;
+  return currentCityList.some(c=>c.toLowerCase()===v.toLowerCase());
+}
+
+/* ---- fuzzy duplicate matching ---- */
+function bigrams(s){s=String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();let arr=[];for(let i=0;i<s.length-1;i++)arr.push(s.slice(i,i+2));return arr}
+function diceCoeff(a,b){let A=bigrams(a),B=bigrams(b);if(!A.length||!B.length)return a&&b&&a.toLowerCase()===b.toLowerCase()?1:0;let map={};A.forEach(x=>map[x]=(map[x]||0)+1);let hits=0;B.forEach(x=>{if(map[x]>0){hits++;map[x]--}});return 2*hits/(A.length+B.length)}
+function dupeScore(card,name,country){let ns=diceCoeff(card.name,name);let cs=country?diceCoeff(card.country||"",country):0;return ns*0.75+cs*0.25}
+function checkDupes(){
+  let name=$("name").value.trim(),country=$("country").value.trim(),excludeId=$("editId").value;
+  if(name.length<3){$("dupes").classList.remove("show");return}
+  let hits=cards.filter(c=>c.id!==excludeId).map(c=>({c,score:dupeScore(c,name,country)})).filter(h=>h.score>0.42).sort((a,b)=>b.score-a.score).slice(0,3);
+  if(!hits.length){$("dupes").classList.remove("show");return}
+  $("dupeList").innerHTML=hits.map(({c})=>`<div class="dupehit" onclick="viewCard('${c.id}')"><div class="dupethumb">${c.photo_url?`<img src="${esc(c.photo_url)}">`:"☕"}</div><div class="dupeinfo"><b>${esc(c.name)}</b><span>${esc(c.series||"Uncategorised")} · ${esc(c.country||"—")}${c.year?" · "+c.year:""}</span></div></div>`).join("");
+  $("dupes").classList.add("show");
+}
+
+/* ---- series colour palette (used for chips + badges = easy visual scanning) ---- */
+const SERIES_PALETTE=[
+  {bg:"#0b3b2c",fg:"#fdf9ef"},   // deep green
+  {bg:"#b3893c",fg:"#2c1e05"},   // gold
+  {bg:"#a13d2b",fg:"#fdf1ea"},   // rust
+  {bg:"#2d5f8a",fg:"#eef5fc"},   // blue
+  {bg:"#6b4185",fg:"#f5edfa"},   // plum
+  {bg:"#1c7a72",fg:"#eafbf8"}    // teal
+];
+function seriesColor(s){if(!s)return SERIES_PALETTE[0];let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return SERIES_PALETTE[h%SERIES_PALETTE.length]}
+function isGuest(){return guestMode&&!currentUser}
+
+async function boot(){
+  const {data:{session}}=await sb.auth.getSession();
+  currentUser=session?.user||null;
+  renderShell();
+  if(currentUser||isGuest())load();
+  sb.auth.onAuthStateChange((_e,s)=>{currentUser=s?.user||null;if(currentUser){guestMode=false;sessionStorage.removeItem("card-ledger-guest")}renderShell();if(currentUser||isGuest())load()});
+}
+
+function renderShell(){
+  if(!currentUser&&!isGuest()){renderLogin();return}
+  const displayName=isGuest()?"Guest":(currentUser.user_metadata?.name||currentUser.email);
+  $("app").innerHTML=`
+  <div class="top"><div class="nav">
+    <div class="brand"><div class="logo">☕</div><div><b>The Card Ledger</b><small>Starbucks card catalogue</small></div></div>
+    <div class="user"><div class="avatar">${initials(displayName)}</div><span class="username">${esc(displayName)}${isGuest()?" · Add only":""}</span><button class="btn ghost" onclick="leaveSession()">Leave</button></div>
+  </div></div>
+  <main>
+    <div class="hero"><div class="hero-inner">
+      <div class="eyebrow">The collection</div><h1>Every cup tells a city.</h1><p>A record of every card you've collected — where it's from, what series it belongs to, and whether you already have it.</p>
+      <button class="btn primary" onclick="openAdd()">＋ Add card</button>
+    </div></div>
+    <div class="stats">
+      <div class="stat" style="--accent:var(--green)"><b id="count">0</b><span>Cards catalogued</span></div>
+      <div class="stat" style="--accent:var(--blue)"><b id="countries">0</b><span>Countries</span></div>
+      <div class="stat" style="--accent:var(--rust)"><b id="seriesCount">0</b><span>Series</span></div>
+    </div>
+    <div class="filterbar">
+      <div class="search"><input id="search" placeholder="Search by name, country, city…"></div>
+      <select id="countryFilter" class="select"><option value="">All countries</option></select>
+      <select id="sortSelect" class="select">
+        <option value="new">Newest first</option>
+        <option value="name">Name A–Z</option>
+        <option value="country">Country A–Z</option>
+        <option value="year">Year, newest</option>
+      </select>
+      <div class="toggle" aria-label="Catalogue layout">
+        <button id="gridBtn" class="active" type="button" title="Grid view" aria-label="Grid view" onclick="setView('grid')">&#9641;</button>
+        <button id="listBtn" type="button" title="List view" aria-label="List view" onclick="setView('list')">&#9776;</button>
+      </div>
+    </div>
+    <div class="chips" id="seriesChips"></div>
+    <div id="grid" class="grid"></div>
+  </main>`;
+  $("search").oninput=render;
+  $("countryFilter").onchange=render;
+  $("sortSelect").onchange=e=>{sortMode=e.target.value;render()};
+}
+
+function renderLogin(){
+  $("app").innerHTML=`<div class="login"><div class="loginbox">
+    <div class="logo">☕</div>
+    <div class="eyebrow" style="text-align:center;margin-bottom:10px">Card catalogue</div>
+    <h1>Explore the collection</h1><p>Browse the catalogue as a guest, or sign in with your own details.</p>
+    <div class="guest-access"><b>Just having a look?</b><span>Browse and add cards without creating an account. Guest sessions cannot edit or remove cards.</span><button class="btn" type="button" onclick="continueAsGuest()">Continue as guest</button></div>
+    <div class="login-divider">or sign in</div>
+    <input id="loginEmail" type="email" placeholder="Email">
+    <input id="loginPass" type="password" placeholder="Password">
+    <button class="btn primary" onclick="login()">Sign in</button>
+    <div id="loginMsg" style="font-size:12px;color:#a62c2c;text-align:center;margin-top:10px"></div>
+  </div></div>`;
+}
+async function login(){let {error}=await sb.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPass").value});if(error)$("loginMsg").textContent=error.message}
+async function continueAsGuest(){
+  await sb.auth.signOut();
+  currentUser=null;guestMode=true;sessionStorage.setItem("card-ledger-guest","true");
+  renderShell();load();
+}
+async function leaveSession(){guestMode=false;sessionStorage.removeItem("card-ledger-guest");await sb.auth.signOut();renderLogin()}
+
+async function load(){
+  let {data,error}=await sb.from("cards").select("*").order("created_at",{ascending:true});
+  if(error){alert(error.message);return}
+  cards=data||[];
+  catalogNo={};
+  cards.forEach((c,i)=>catalogNo[c.id]=i+1);
+  cards=cards.slice().reverse();
+  populateFilters();
+  render();
+}
+
+function populateFilters(){
+  let cs=$("countryFilter");
+  if(cs){let old=cs.value;cs.innerHTML='<option value="">All countries</option>'+[...new Set(cards.map(c=>c.country).filter(Boolean))].sort().map(c=>`<option>${esc(c)}</option>`).join("");cs.value=old}
+  let series=[...new Set(cards.map(c=>c.series).filter(Boolean))].sort();
+  let counts={};cards.forEach(c=>{if(c.series)counts[c.series]=(counts[c.series]||0)+1});
+  let chipsEl=$("seriesChips");
+  if(chipsEl){
+    chipsEl.innerHTML=[`<button class="chip ${activeSeries===""?"active":""}" onclick="setSeries('')">All <span class="n">${cards.length}</span></button>`]
+      .concat(series.map(s=>{let col=seriesColor(s);return `<button class="chip ${activeSeries===s?"active":""}" onclick="setSeries('${esc(s).replace(/'/g,"\\'")}')"><span class="swatch" style="background:${col.bg}"></span>${esc(s)} <span class="n">${counts[s]}</span></button>`})).join("");
+  }
+}
+function setSeries(s){activeSeries=s;populateFilters();render()}
+function setView(v){view=v;$("grid").classList.toggle("list",v==="list");$("gridBtn").classList.toggle("active",v==="grid");$("listBtn").classList.toggle("active",v==="list");render()}
+
+function render(){
+  let q=($("search")?.value||"").toLowerCase().trim();
+  let cf=$("countryFilter")?.value||"";
+  let list=cards.filter(c=>(!cf||c.country===cf)&&(!activeSeries||c.series===activeSeries)&&(!q||JSON.stringify(c).toLowerCase().includes(q)));
+  if(sortMode==="name")list=list.slice().sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  else if(sortMode==="country")list=list.slice().sort((a,b)=>(a.country||"").localeCompare(b.country||""));
+  else if(sortMode==="year")list=list.slice().sort((a,b)=>(b.year||0)-(a.year||0));
+
+  $("count").textContent=cards.length;
+  $("countries").textContent=new Set(cards.map(c=>c.country).filter(Boolean)).size;
+  $("seriesCount").textContent=new Set(cards.map(c=>c.series).filter(Boolean)).size;
+
+  $("grid").innerHTML=list.length?list.map(c=>{
+    let col=seriesColor(c.series);
+    return `
+    <article class="card" ${isGuest()?"":"onclick=\"viewCard('"+c.id+"')\""}>
+      <div class="photo">
+        ${c.photo_url?`<img src="${esc(c.photo_url)}" alt="${esc(c.name)}">`:`<div class="ph">☕</div>`}
+        <div class="catno font-mono">${padNo(catalogNo[c.id]||0)}</div>
+        ${c.series?`<div class="seriesbadge" style="background:${col.bg};color:${col.fg}">${esc(c.series)}</div>`:""}
+      </div>
+      <div class="seam"></div>
+      <div class="cardbody">
+        <div class="title">${esc(c.name)}</div>
+        <div class="meta">${esc(c.city||"Location not set")}${c.country?`<span class="dot"></span>${esc(c.country)}`:""}${c.year?`<span class="dot"></span>${c.year}`:""}</div>
+        ${c.added_by?`<div class="collector"><div class="miniavatar">${initials(c.added_by)}</div>Added by ${esc(c.added_by)}</div>`:""}
+      </div>
+    </article>`;
+  }).join("")
+    :`<div class="empty"><strong>${cards.length?"No cards match that search.":"Your collection is waiting."}</strong>${cards.length?"Try a different name, series or country.":"Add your first Starbucks card to begin the catalogue."}${cards.length?"":`<div><button class="btn primary" onclick="openAdd()">＋ Add your first card</button></div>`}</div>`;
+}
+
+function openAdd(){
+  cardForm.reset();$("editId").value="";photoData="";$("preview").innerHTML="☕";
+  $("dialogTitle").textContent="Add a card";$("seriesOtherWrap").style.display="none";
+  $("dupes").classList.remove("show");
+  $("city").disabled=true;$("city").placeholder="Choose a country first";$("cityHint").textContent="";
+  currentCityList=[];
+  cardDialog.showModal();
+}
+function viewCard(id){
+  if(isGuest())return;
+  let c=cards.find(x=>x.id===id);if(!c)return;
+  cardDialog.close();
+  cardForm.reset();
+  $("editId").value=c.id;$("name").value=c.name;$("country").value=c.country||"";
+  $("addedBy").value=c.added_by||"";$("year").value=c.year||"";
+  let known=["City Collection","Anniversary","Holiday & Seasonal","Starbucks Reserve"];
+  if(c.series&&!known.includes(c.series)){$("series").value="Other";$("seriesOtherWrap").style.display="block";$("seriesOther").value=c.series}
+  else{$("series").value=c.series||"";$("seriesOtherWrap").style.display="none"}
+  photoData=c.photo_url||"";$("preview").innerHTML=photoData?`<img src="${esc(photoData)}">`:"☕";
+  $("dialogTitle").textContent="Edit card";$("dupes").classList.remove("show");
+  loadCitiesFor(c.country||"").then(()=>{$("city").value=c.city||""});
+  cardDialog.showModal();
+}
+$("series").onchange=e=>{$("seriesOtherWrap").style.display=e.target.value==="Other"?"block":"none"};
+$("country").oninput=e=>{loadCitiesFor(e.target.value);checkDupes()};
+$("name").oninput=checkDupes;
+$("photo").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{$("preview").innerHTML=`<img src="${r.result}">`;photoData=r.result};r.readAsDataURL(f)};
+
+async function uploadPhoto(){
+  if(!photoData.startsWith("data:"))return photoData;
+  let blob=await(await fetch(photoData)).blob(),ext=(blob.type.split("/")[1]||"jpg").replace("jpeg","jpg"),path=`${crypto.randomUUID()}.${ext}`;
+  let up=await sb.storage.from("card-photos").upload(path,blob,{upsert:true,contentType:blob.type});
+  if(up.error)throw up.error;
+  return sb.storage.from("card-photos").getPublicUrl(path).data.publicUrl;
+}
+cardForm.onsubmit=async e=>{
+  e.preventDefault();
+  let validCountry=normalizedCountry($("country").value);
+  if(!validCountry){
+    $("countryHint").textContent="Enter a real country from the suggestions.";
+    $("countryHint").className="hint warn";
+    $("country").focus();
+    return;
+  }
+  $("country").value=validCountry;
+  await loadCitiesFor(validCountry);
+  if(!validateCity()){
+    $("cityHint").textContent="Enter a real city for the selected country, or leave this blank.";
+    $("cityHint").className="hint warn";
+    $("city").focus();
+    return;
+  }
+  try{
+    let url=await uploadPhoto();
+    let seriesVal=$("series").value==="Other"?$("seriesOther").value.trim():$("series").value;
+    let row={
+      name:$("name").value.trim(),
+      country:$("country").value.trim(),
+      city:$("city").value.trim(),
+      series:seriesVal||null,
+      year:$("year").value?parseInt($("year").value,10):null,
+      added_by:$("addedBy").value.trim()||currentUser?.user_metadata?.name||currentUser?.email?.split("@")[0]||(isGuest()?"Guest":""),
+      photo_url:url||null
+    };
+    let id=$("editId").value;
+    if(isGuest()&&id)throw new Error("Guest sessions can add cards only");
+    let res=id?await sb.from("cards").update(row).eq("id",id):await sb.from("cards").insert(row);
+    if(res.error)throw res.error;
+    cardDialog.close();load();
+  }catch(err){alert(err.message||"Could not save card")}
+};
+populateCountrySelect();
+boot();
+</script></body></html>
