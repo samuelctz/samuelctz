@@ -210,15 +210,11 @@ dialog::backdrop{background:#0f1713b3;backdrop-filter:blur(3px)}
   <div class="row2">
     <div class="field">
       <label>Country *</label>
-      <input id="country" required placeholder="e.g. Singapore" autocomplete="off" list="countryOptions">
-      <datalist id="countryOptions"></datalist>
-      <div class="hint" id="countryHint"></div>
+      <input id="country" required placeholder="e.g. Singapore" autocomplete="country-name">
     </div>
     <div class="field">
       <label>City / location</label>
-      <input id="city" placeholder="Enter a valid country first" autocomplete="off" list="cityOptions" disabled>
-      <datalist id="cityOptions"></datalist>
-      <div class="hint" id="cityHint"></div>
+      <input id="city" placeholder="e.g. Orchard Road" autocomplete="address-level2">
     </div>
   </div>
   <div class="field"><label>Added by</label><input id="addedBy" placeholder="Your name"></div>
@@ -229,65 +225,10 @@ const CONFIG={url:"https://opxpawdxngyuehtwxirc.supabase.co",key:"sb_publishable
 const sb=supabase.createClient(CONFIG.url,CONFIG.key);
 let cards=[],photoData="",view="grid",currentUser=null,catalogNo={},activeSeries="",sortMode="new";
 let guestMode=sessionStorage.getItem("card-ledger-guest")==="true";
-let cityCache={},currentCityList=[],cityLookupAvailable=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const initials=s=>String(s||"?").split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase();
 const padNo=n=>"No. "+String(n).padStart(3,"0");
-
-/* ---- legitimate country list (ISO country names, static so it always works) ---- */
-const COUNTRIES=["Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda","Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain","Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia","Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso","Burundi","Cabo Verde","Cambodia","Cameroon","Canada","Central African Republic","Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba","Cyprus","Czechia","Denmark","Djibouti","Dominica","Dominican Republic","Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini","Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana","Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras","Hong Kong","Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy","Ivory Coast","Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kosovo","Kuwait","Kyrgyzstan","Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania","Luxembourg","Macau","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands","Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro","Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand","Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan","Palau","Palestine","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal","Puerto Rico","Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia","Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe","Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia","Slovenia","Solomon Islands","Somalia","South Africa","South Korea","South Sudan","Spain","Sri Lanka","Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania","Thailand","Timor-Leste","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan","Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States","Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia","Zimbabwe"];
-
-function populateCountrySelect(){
-  $("countryOptions").innerHTML=COUNTRIES.map(c=>`<option value="${esc(c)}">`).join("");
-}
-function normalizedCountry(value){
-  let entered=value.trim().toLowerCase();
-  return COUNTRIES.find(country=>country.toLowerCase()===entered)||"";
-}
-
-/* City list per country — fetched from a public places dataset so only real cities can be entered.
-   Falls back to free text (flagged as unverified) if the lookup fails, so the form never gets stuck. */
-async function loadCitiesFor(country){
-  let cityInput=$("city"),hint=$("cityHint"),countryHint=$("countryHint");
-  currentCityList=[];cityLookupAvailable=false;
-  let validCountry=normalizedCountry(country);
-  if(!country){cityInput.disabled=true;cityInput.value="";cityInput.placeholder="Enter a valid country first";hint.textContent="";countryHint.textContent="";return}
-  if(!validCountry){cityInput.disabled=true;cityInput.value="";cityInput.placeholder="Enter a valid country first";hint.textContent="";countryHint.textContent="Use a real country from the suggestions.";countryHint.className="hint warn";return}
-  country=validCountry;countryHint.textContent="Country verified.";countryHint.className="hint";
-  cityInput.disabled=false;cityInput.placeholder="Start typing a city…";hint.textContent="Loading cities…";hint.className="hint";
-  if(cityCache[country]){currentCityList=cityCache[country];cityLookupAvailable=true;fillCityList();return}
-  try{
-    let res=await fetch("https://countriesnow.space/api/v0.1/countries/cities",{
-      method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({country})
-    });
-    let json=await res.json();
-    if(json.error||!Array.isArray(json.data))throw new Error("no data");
-    cityCache[country]=json.data;
-    currentCityList=json.data;
-    cityLookupAvailable=true;
-    fillCityList();
-  }catch(err){
-    currentCityList=[];
-    cityLookupAvailable=false;
-    hint.textContent="Couldn't verify a city list for this country — you can still type one in.";
-    hint.className="hint warn";
-    hint.textContent="Couldn't verify cities for this country. Please try again before saving.";
-  }
-}
-function fillCityList(){
-  let dl=$("cityOptions"),hint=$("cityHint");
-  dl.innerHTML=currentCityList.slice(0,4000).map(c=>`<option value="${esc(c)}">`).join("");
-  hint.textContent=currentCityList.length?`${currentCityList.length.toLocaleString()} known cities — pick one from the list.`:"No city list available for this country — free text allowed.";
-  hint.className="hint";
-  hint.textContent=currentCityList.length?`${currentCityList.length.toLocaleString()} known cities. Type one, or select a suggestion.`:"No verified cities found for this country.";
-}
-function validateCity(){
-  let v=$("city").value.trim();
-  if(!v)return true;
-  if(!cityLookupAvailable)return false;
-  return currentCityList.some(c=>c.toLowerCase()===v.toLowerCase());
-}
 
 /* ---- fuzzy duplicate matching ---- */
 function bigrams(s){s=String(s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();let arr=[];for(let i=0;i<s.length-1;i++)arr.push(s.slice(i,i+2));return arr}
@@ -444,8 +385,6 @@ function openAdd(){
   cardForm.reset();$("editId").value="";photoData="";$("preview").innerHTML="☕";
   $("dialogTitle").textContent="Add a card";$("seriesOtherWrap").style.display="none";
   $("dupes").classList.remove("show");
-  $("city").disabled=true;$("city").placeholder="Choose a country first";$("cityHint").textContent="";
-  currentCityList=[];
   cardDialog.showModal();
 }
 function viewCard(id){
@@ -460,11 +399,11 @@ function viewCard(id){
   else{$("series").value=c.series||"";$("seriesOtherWrap").style.display="none"}
   photoData=c.photo_url||"";$("preview").innerHTML=photoData?`<img src="${esc(photoData)}">`:"☕";
   $("dialogTitle").textContent="Edit card";$("dupes").classList.remove("show");
-  loadCitiesFor(c.country||"").then(()=>{$("city").value=c.city||""});
+  $("city").value=c.city||"";
   cardDialog.showModal();
 }
 $("series").onchange=e=>{$("seriesOtherWrap").style.display=e.target.value==="Other"?"block":"none"};
-$("country").oninput=e=>{loadCitiesFor(e.target.value);checkDupes()};
+$("country").oninput=checkDupes;
 $("name").oninput=checkDupes;
 $("photo").onchange=e=>{let f=e.target.files[0];if(!f)return;let r=new FileReader();r.onload=()=>{$("preview").innerHTML=`<img src="${r.result}">`;photoData=r.result};r.readAsDataURL(f)};
 
@@ -477,21 +416,6 @@ async function uploadPhoto(){
 }
 cardForm.onsubmit=async e=>{
   e.preventDefault();
-  let validCountry=normalizedCountry($("country").value);
-  if(!validCountry){
-    $("countryHint").textContent="Enter a real country from the suggestions.";
-    $("countryHint").className="hint warn";
-    $("country").focus();
-    return;
-  }
-  $("country").value=validCountry;
-  await loadCitiesFor(validCountry);
-  if(!validateCity()){
-    $("cityHint").textContent="Enter a real city for the selected country, or leave this blank.";
-    $("cityHint").className="hint warn";
-    $("city").focus();
-    return;
-  }
   try{
     let url=await uploadPhoto();
     let seriesVal=$("series").value==="Other"?$("seriesOther").value.trim():$("series").value;
@@ -511,6 +435,5 @@ cardForm.onsubmit=async e=>{
     cardDialog.close();load();
   }catch(err){alert(err.message||"Could not save card")}
 };
-populateCountrySelect();
 boot();
 </script></body></html>
